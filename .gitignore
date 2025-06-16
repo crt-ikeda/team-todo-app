@@ -1,0 +1,20 @@
+node_modules/
+.env
+*.sqlite
+*.sqlite3
+dist/
+build/
+.DS_Store
+*.log
+
+# Temporary files
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+Thumbs.db
