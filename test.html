@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Todo App - テスト</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Team Todo App - 動作確認</h1>
+        
+        <div id="status" class="status">準備中...</div>
+        
+        <h2>API接続テスト</h2>
+        <button onclick="testHealth()">ヘルスチェック</button>
+        <button onclick="testTodos()">Todo一覧取得</button>
+        
+        <h2>ユーザー登録テスト</h2>
+        <div>
+            <input type="text" id="username" placeholder="ユーザー名" value="testuser">
+            <input type="email" id="email" placeholder="メール" value="test@example.com">
+            <input type="password" id="password" placeholder="パスワード" value="password123">
+            <button onclick="testRegister()">登録テスト</button>
+        </div>
+        
+        <h2>ログインテスト</h2>
+        <div>
+            <input type="text" id="loginUser" placeholder="ユーザー名" value="testuser">
+            <input type="password" id="loginPass" placeholder="パスワード" value="password123">
+            <button onclick="testLogin()">ログイン</button>
+        </div>
+        
+        <div id="token" style="margin-top: 20px; display: none;">
+            <strong>トークン:</strong> <span id="tokenValue"></span>
+        </div>
+        
+        <h2>Todo作成テスト</h2>
+        <div>
+            <input type="text" id="todoTitle" placeholder="Todoタイトル" value="テストTodo">
+            <input type="text" id="todoDesc" placeholder="説明" value="これはテスト用のTodoです">
+            <label><input type="checkbox" id="todoShared"> 共有Todo</label>
+            <button onclick="testCreateTodo()">Todo作成</button>
+        </div>
+        
+        <div id="result" style="margin-top: 20px; white-space: pre-wrap; background: #f8f9fa; padding: 15px; border-radius: 4px;"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+        let currentToken = '';
+
+        function updateStatus(message, isError = false) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + (isError ? 'error' : 'success');
+        }
+
+        function updateResult(data) {
+            document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                };
+                
+                if (currentToken) {
+                    headers.Authorization = `Bearer ${currentToken}`;
+                }
+
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    ...options,
+                    headers
+                });
+                
+                const data = await response.json();
+                updateResult(data);
+                
+                if (response.ok) {
+                    updateStatus(`成功: ${endpoint}`);
+                    return data;
+                } else {
+                    updateStatus(`エラー: ${data.message || data.error}`, true);
+                    return null;
+                }
+            } catch (error) {
+                updateStatus(`接続エラー: ${error.message}`, true);
+                updateResult({error: error.message});
+                return null;
+            }
+        }
+
+        async function testHealth() {
+            await apiCall('/health');
+        }
+
+        async function testTodos() {
+            await apiCall('/todos?type=shared');
+        }
+
+        async function testRegister() {
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const result = await apiCall('/auth/register', {
+                method: 'POST',
+                body: JSON.stringify({ username, email, password })
+            });
+            
+            if (result && result.token) {
+                currentToken = result.token;
+                document.getElementById('tokenValue').textContent = result.token.substring(0, 50) + '...';
+                document.getElementById('token').style.display = 'block';
+            }
+        }
+
+        async function testLogin() {
+            const username = document.getElementById('loginUser').value;
+            const password = document.getElementById('loginPass').value;
+            
+            const result = await apiCall('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ username, password })
+            });
+            
+            if (result && result.token) {
+                currentToken = result.token;
+                document.getElementById('tokenValue').textContent = result.token.substring(0, 50) + '...';
+                document.getElementById('token').style.display = 'block';
+            }
+        }
+
+        async function testCreateTodo() {
+            if (!currentToken) {
+                updateStatus('先にログインしてください', true);
+                return;
+            }
+            
+            const title = document.getElementById('todoTitle').value;
+            const description = document.getElementById('todoDesc').value;
+            const is_shared = document.getElementById('todoShared').checked;
+            
+            await apiCall('/todos', {
+                method: 'POST',
+                body: JSON.stringify({ title, description, is_shared })
+            });
+        }
+
+        // 初期化
+        updateStatus('ページが読み込まれました。APIテストを開始してください。');
+    </script>
+</body>
+</html>
